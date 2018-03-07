@@ -35,18 +35,33 @@ Cory Beightol <cb56@buffalo.edu>
 >> A2: Briefly describe what happens in a call to timer_sleep(),
 >> including the effects of the timer interrupt handler.
 
+Chane the timer_sleep from busy waiting to sleeping the thread by putting it into some type of queue, which is orginized by priorty.
+
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
+
+We orginize the thread list by shortest job first. and have timer_sleep() sleep a thread for a certian ammount of ticks. 
+This will let the timer_interrupt handeler only have to do little work checking how many ticks are left.
+
 
 ---- SYNCHRONIZATION ----
 
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
 
+Timer sleep needs to have a critical section so that if timer_sleep() is called on a thread, it wont accept another thread
+until the current one is sleeping
 
 
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
+
+we would have to temp turn off interupts during timer_sleep(). from the assignment:
+
+	In the Pintos projects, the only class of problem best solved by disabling interrupts is coordinating data shared
+	between a kernel thread and an interrupt handler. Because interrupt handlers can't sleep, they can't acquire locks.
+	This means that data shared between kernel threads and an interrupt handler must be protected within a kernel thread
+	by turning off interrupts
 
 ---- RATIONALE ----
 
@@ -89,6 +104,7 @@ the lower priority thread gets preempted in favor of the higher one
 >> how your implementation avoids it.  Can you use a lock to avoid
 >> this race?
 
+Disable interupts until the priority is changed
 
 
 ---- RATIONALE ----

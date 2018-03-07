@@ -149,6 +149,11 @@ ticks   A   B   C   A   B   C   to run
 >> C4: How is the way you divided the cost of scheduling between code
 >> inside and outside interrupt context likely to affect performance?
 
+Adding computation-heavy code inside the interrupt context can have 
+the result of stealing CPU time from other threads. This can affect 
+scheduling decisions and potentially cause threads to be given less
+time to execute before a thread switch.
+
 ---- RATIONALE ----
 
 >> C5: Briefly critique your design, pointing out advantages and

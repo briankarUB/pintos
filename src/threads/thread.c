@@ -493,7 +493,7 @@ init_thread (struct thread *t, const char *name, int priority)
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
-
+  list_init(&t->waiters);
   list_insert_ordered (&all_list_ordered,
                        &t->allelemord,
                        &thread_less_func,
@@ -501,6 +501,7 @@ init_thread (struct thread *t, const char *name, int priority)
 
   sema_init(&t->wakesema, 0);
   t->waketime = -1;
+
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -626,5 +627,20 @@ thread_less_func (const struct list_elem *a,
   struct thread *ta = list_entry(a, struct thread, allelemord);
   struct thread *tb = list_entry(b, struct thread, allelemord);
 
-  return ta->priority > tb->priority;
+  return thread_get_priority_of(ta) > thread_get_priority_of(tb);
+}
+
+
+int 
+thread_get_priority_of(struct thread *t){
+  if(list_empty(&t->waiters)){
+    return t->priority;
+  }
+  PANIC ("should not be reached");
+  struct thread *tmax = list_entry(list_max(&t->waiters, &thread_less_func, NULL),struct thread,waiters_elem);
+  int pri = thread_get_priority_of(tmax);
+  if (t->priority > pri){
+    return t->priority;
+  }
+  return pri;
 }

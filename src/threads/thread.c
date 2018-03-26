@@ -636,7 +636,7 @@ thread_get_priority_of(struct thread *t){
   if(list_empty(&t->waiters)){
     return t->priority;
   }
-  PANIC ("should not be reached");
+ 
   struct thread *tmax = list_entry(list_max(&t->waiters, &thread_less_func, NULL),struct thread,waiters_elem);
   int pri = thread_get_priority_of(tmax);
   if (t->priority > pri){

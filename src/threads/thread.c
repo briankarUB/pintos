@@ -363,15 +363,23 @@ thread_foreach_ordered (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority)
 {
-  thread_current ()->priority = new_priority;
+  struct thread *cur = thread_current ();
+
+  cur->priority = new_priority;
   list_sort (&all_list_ordered, &thread_less_func, NULL);
+
+  struct list_elem *highest = list_front (&all_list_ordered);
+
+  if (thread_less_func(highest, &cur->allelemord, NULL))
+    thread_yield ();
 }
 
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void)
 {
-  return thread_current ()->priority;
+  // return thread_current ()->priority;
+  return thread_get_priority_of (thread_current ());
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -633,6 +641,17 @@ thread_less_func (const struct list_elem *a,
   return thread_get_priority_of(ta) > thread_get_priority_of(tb);
 }
 
+static bool
+thread_less_func_waiters (const struct list_elem *a,
+                  const struct list_elem *b,
+                  void *aux UNUSED)
+{
+  struct thread *ta = list_entry(a, struct thread, waiters_elem);
+  struct thread *tb = list_entry(b, struct thread, waiters_elem);
+
+  return thread_get_priority_of(ta) > thread_get_priority_of(tb);
+}
+
 
 /* Compares two threads based on their priority. */
 static bool
@@ -653,7 +672,7 @@ thread_get_priority_of(struct thread *t){
     return t->priority;
   }
 
-  struct thread *tmax = list_entry(list_max(&t->waiters, &thread_less_func, NULL),struct thread,waiters_elem);
+  struct thread *tmax = list_entry(list_max(&t->waiters, &thread_less_func_waiters, NULL),struct thread,waiters_elem);
   int pri = thread_get_priority_of(tmax);
   if (t->priority > pri){
     return t->priority;

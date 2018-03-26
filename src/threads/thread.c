@@ -76,6 +76,9 @@ static tid_t allocate_tid (void);
 static bool thread_less_func (const struct list_elem *a,
                               const struct list_elem *b,
                               void *aux);
+static bool thread_less_func_elem (const struct list_elem *a,
+                                   const struct list_elem *b,
+                                   void *aux);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -244,7 +247,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_insert_ordered (&ready_list, &t->elem, &thread_less_func_elem, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -316,7 +319,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread)
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered (&ready_list, &cur->elem, &thread_less_func_elem, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -631,12 +634,25 @@ thread_less_func (const struct list_elem *a,
 }
 
 
-int 
+/* Compares two threads based on their priority. */
+static bool
+thread_less_func_elem (const struct list_elem *a,
+                       const struct list_elem *b,
+                       void *aux UNUSED)
+{
+  struct thread *ta = list_entry(a, struct thread, elem);
+  struct thread *tb = list_entry(b, struct thread, elem);
+
+  return thread_get_priority_of(ta) > thread_get_priority_of(tb);
+}
+
+
+int
 thread_get_priority_of(struct thread *t){
   if(list_empty(&t->waiters)){
     return t->priority;
   }
- 
+
   struct thread *tmax = list_entry(list_max(&t->waiters, &thread_less_func, NULL),struct thread,waiters_elem);
   int pri = thread_get_priority_of(tmax);
   if (t->priority > pri){

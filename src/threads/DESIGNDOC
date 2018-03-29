@@ -3,7 +3,7 @@
 			| PROJECT 1: THREADS |
 			|   DESIGN DOCUMENT  |
 			+--------------------+
-				   
+
 ---- GROUP ----
 
 >> Fill in the names and email addresses of your group members.
@@ -30,17 +30,65 @@ Cory Beightol <cb56@buffalo.edu>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+/* List of all threads sorted by their priority. */
+static struct list all_list_ordered;
+
+struct thread
+  {
+    /* Owned by thread.c. */
+    tid_t tid;                          /* Thread identifier. */
+    enum thread_status status;          /* Thread state. */
+    char name[16];                      /* Name (for debugging purposes). */
+    uint8_t *stack;                     /* Saved stack pointer. */
+    int priority;                       /* Priority. */
+    struct list_elem allelem;           /* List element for all threads list. */
+
+    struct list_elem allelemord;        /* Ordered threads list element. */
+
+    /* Shared between thread.c and synch.c. */
+    struct list_elem elem;              /* List element. */
+
+    struct list waiters;
+    struct list_elem waiters_elem;
+#ifdef USERPROG
+    /* Owned by userprog/process.c. */
+    uint32_t *pagedir;                  /* Page directory. */
+#endif
+
+    /* timer_sleep implementation */
+    struct semaphore wakesema;
+    long long waketime;
+
+    /* Owned by thread.c. */
+    unsigned magic;                     /* Detects stack overflow. */
+  };
+
+
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe what happens in a call to timer_sleep(),
 >> including the effects of the timer interrupt handler.
 
 Chane the timer_sleep from busy waiting to sleeping the thread by putting it into some type of queue, which is orginized by priorty.
+void
+timer_sleep (int64_t ticks)
+{
+  if (ticks <= 0)
+    return;
+
+  struct thread *cur = thread_current ();
+  cur->waketime = timer_ticks () + ticks;
+
+  ASSERT (intr_get_level () == INTR_ON);
+
+  sema_down(&cur->wakesema);
+}
+
 
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
 
-We orginize the thread list by shortest job first. and have timer_sleep() sleep a thread for a certian ammount of ticks. 
+We orginize the thread list by shortest job first. and have timer_sleep() sleep a thread for a certian ammount of ticks.
 This will let the timer_interrupt handeler only have to do little work checking how many ticks are left.
 
 
@@ -68,6 +116,8 @@ we would have to temp turn off interupts during timer_sleep(). from the assignme
 >> A6: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
 
+This way was the most intuitive; changing thread sleep to have each thread yeild for a certian ammount of time, then waking that thread up, getting rid of busy waiting.
+
 			 PRIORITY SCHEDULING
 			 ===================
 
@@ -76,6 +126,36 @@ we would have to temp turn off interupts during timer_sleep(). from the assignme
 >> B1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+
+struct thread
+  {
+    /* Owned by thread.c. */
+    tid_t tid;                          /* Thread identifier. */
+    enum thread_status status;          /* Thread state. */
+    char name[16];                      /* Name (for debugging purposes). */
+    uint8_t *stack;                     /* Saved stack pointer. */
+    int priority;                       /* Priority. */
+    struct list_elem allelem;           /* List element for all threads list. */
+
+    struct list_elem allelemord;        /* Ordered threads list element. */
+
+    /* Shared between thread.c and synch.c. */
+    struct list_elem elem;              /* List element. */
+
+    struct list waiters;
+    struct list_elem waiters_elem;
+#ifdef USERPROG
+    /* Owned by userprog/process.c. */
+    uint32_t *pagedir;                  /* Page directory. */
+#endif
+
+    /* timer_sleep implementation */
+    struct semaphore wakesema;
+    long long waketime;
+
+    /* Owned by thread.c. */
+    unsigned magic;                     /* Detects stack overflow. */
+  };
 
 >> B2: Explain the data structure used to track priority donation.
 >> Use ASCII art to diagram a nested donation.  (Alternately, submit a
@@ -111,6 +191,10 @@ Disable interupts until the priority is changed
 
 >> B7: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
+
+the challenging part was dealing with priority donation, we decided on each thread having a list of other threads that are waiting for that thread to finish.
+All of the threads in the waiters list have their priority changed up. We also orginized the ready list by priorty and sort it any time priorty is changed.
+
 
 			  ADVANCED SCHEDULER
 			  ==================
@@ -156,8 +240,8 @@ approximately resemble the behavior of the 4.4BSD scheduling algorithm.
 >> C4: How is the way you divided the cost of scheduling between code
 >> inside and outside interrupt context likely to affect performance?
 
-Adding computation-heavy code inside the interrupt context can have 
-the result of stealing CPU time from other threads. This can affect 
+Adding computation-heavy code inside the interrupt context can have
+the result of stealing CPU time from other threads. This can affect
 scheduling decisions and potentially cause threads to be given less
 time to execute before a thread switch.
 

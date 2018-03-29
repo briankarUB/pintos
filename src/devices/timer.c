@@ -189,7 +189,7 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  thread_foreach_ordered (&wakeup_thread_func, NULL);
+  thread_foreach (&wakeup_thread_func, NULL);
   thread_tick ();
 }
 

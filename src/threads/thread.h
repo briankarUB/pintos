@@ -95,9 +95,10 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
- 
-    struct list waiters;
-    struct list_elem waiters_elem;
+
+    /* Locks held by this thread */
+    struct list locks;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -148,5 +149,8 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+bool thread_less_func_elem (const struct list_elem *a,
+                            const struct list_elem *b,
+                            void *aux);
 
 #endif /* threads/thread.h */

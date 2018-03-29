@@ -76,9 +76,6 @@ static tid_t allocate_tid (void);
 static bool thread_less_func (const struct list_elem *a,
                               const struct list_elem *b,
                               void *aux);
-static bool thread_less_func_elem (const struct list_elem *a,
-                                   const struct list_elem *b,
-                                   void *aux);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -210,6 +207,12 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
+
+  /* Immediately schedule t if it has higher priority than current thread */
+  if (priority > thread_get_priority ())
+  {
+    thread_yield ();
+  }
 
   return tid;
 }
@@ -370,15 +373,16 @@ thread_set_priority (int new_priority)
 
   struct list_elem *highest = list_front (&all_list_ordered);
 
-  if (thread_less_func(highest, &cur->allelemord, NULL))
+  if (thread_less_func (highest, &cur->allelemord, NULL))
+  {
     thread_yield ();
+  }
 }
 
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void)
 {
-  // return thread_current ()->priority;
   return thread_get_priority_of (thread_current ());
 }
 
@@ -504,7 +508,7 @@ init_thread (struct thread *t, const char *name, int priority)
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
-  list_init(&t->waiters);
+  list_init(&t->locks);
   list_insert_ordered (&all_list_ordered,
                        &t->allelemord,
                        &thread_less_func,
@@ -624,7 +628,7 @@ allocate_tid (void)
 
   return tid;
 }
-
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
@@ -641,20 +645,8 @@ thread_less_func (const struct list_elem *a,
   return thread_get_priority_of(ta) > thread_get_priority_of(tb);
 }
 
-static bool
-thread_less_func_waiters (const struct list_elem *a,
-                  const struct list_elem *b,
-                  void *aux UNUSED)
-{
-  struct thread *ta = list_entry(a, struct thread, waiters_elem);
-  struct thread *tb = list_entry(b, struct thread, waiters_elem);
-
-  return thread_get_priority_of(ta) > thread_get_priority_of(tb);
-}
-
-
 /* Compares two threads based on their priority. */
-static bool
+bool
 thread_less_func_elem (const struct list_elem *a,
                        const struct list_elem *b,
                        void *aux UNUSED)
@@ -665,17 +657,34 @@ thread_less_func_elem (const struct list_elem *a,
   return thread_get_priority_of(ta) > thread_get_priority_of(tb);
 }
 
+static bool
+lock_less_func (const struct list_elem *a,
+                const struct list_elem *b,
+                void *aux UNUSED)
+{
+  struct lock *la = list_entry (a, struct lock, elem);
+  struct lock *lb = list_entry (b, struct lock, elem);
+
+  return lock_get_priority (la) > lock_get_priority (lb);
+}
 
 int
-thread_get_priority_of(struct thread *t){
-  if(list_empty(&t->waiters)){
-    return t->priority;
-  }
+thread_get_priority_of(struct thread *t)
+{
+  struct lock *max;
+  int pri;
 
-  struct thread *tmax = list_entry(list_max(&t->waiters, &thread_less_func_waiters, NULL),struct thread,waiters_elem);
-  int pri = thread_get_priority_of(tmax);
-  if (t->priority > pri){
+  /* Thread holds no locks */
+  if (list_empty (&t->locks))
     return t->priority;
-  }
-  return pri;
+
+  max = list_entry (list_max (&t->locks, &lock_less_func, NULL),
+                    struct lock,
+                    elem);
+  pri = lock_get_priority (max);
+
+  if (t->priority > pri)
+    return t->priority;
+  else
+    return pri;
 }

@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/fixed-point.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -39,6 +40,8 @@ static struct thread *initial_thread;
 
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
+
+int load_avg =0;
 
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame
@@ -405,15 +408,27 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void)
 {
-  /* Not yet implemented. */
-  return 0;
+  /* load_avg = (59/60)*load_avg + (1/60)*ready_threads */
+
+  struct fixed_point past_weight = fp_from_fraction (59,60);
+  struct fixed_point ready_weight = fp_from_fraction (1,60);
+  size_t read_len = list_size(&ready_list);
+  past_weight = fp_mul_n(&past_weight,load_avg);
+  ready_weight = fp_mul_n(&ready_weight, read_len);
+
+  struct fixed_point fp_out = fp_add(&past_weight,&ready_weight);
+
+  int int_out = fp_to_int_nearest(&fp_out);
+  load_avg = int_out;
+  return int_out;
+
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void)
 {
-  /* Not yet implemented. */
+  /* recent_cpu = (2*load_avg)/(2*load_avg + 1) * recent_cpu + nice. */
   return 0;
 }
 

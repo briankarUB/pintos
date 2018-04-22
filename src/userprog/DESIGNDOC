@@ -35,14 +35,20 @@ Cory Beightol <cb56@buffalo.edu>
 >> A2: Briefly describe how you implemented argument parsing.  How do
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
+A argument stack needs to be set up on boot of pintos. One that uses memcpy(). 
+The program name is always in thread->name so we can always access it. 
+Avoiding overflowing the stack has to do with the esp pointer and checking if it is valid. 
 
 ---- RATIONALE ----
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
+In strtok_r() the save_pointer is provided by the caller 
 
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
+1 shortening time inside the kernel
+2 checking if the arguments are valid before passing it to the kernel to avoid kernel fail. 
 
 			     SYSTEM CALLS
 			     ============

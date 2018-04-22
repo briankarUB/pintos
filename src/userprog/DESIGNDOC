@@ -63,10 +63,18 @@ In strtok_r() the save_pointer is provided by the caller
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
 
+File descriptors are unique within the entire OS. We keep track of open files in the kernel.
+Each file has only one file descriptor to prevent ambiguity.
+
 ---- ALGORITHMS ----
 
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
+
+We read and write files using a buffer. When we read a file, we use a lock
+so that the filesystem is not accessed or used by another process. Then, we use
+file_read to actually read the file. For writing, we also use a lock, and then use
+file_write to write/print out what's in the file. 
 
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
@@ -74,6 +82,14 @@ In strtok_r() the save_pointer is provided by the caller
 >> (e.g. calls to pagedir_get_page()) that might result?  What about
 >> for a system call that only copies 2 bytes of data?  Is there room
 >> for improvement in these numbers, and how much?
+
+So, the best case scenario is the full page is copied into contiguous memory space.
+Then we could use a pointer that points to the head of the page and would only have to
+call pagedir_get_page() once. Worst case scenario is the page gets split up and stored into
+4096 slots of memory, which would require 4096 calls.
+
+For 2 bytes it's the same idea: 1 in the best case and 2 in the worst case. In general you can use
+defragmentation to minimize the possible number of inspections. 
 
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
@@ -91,6 +107,8 @@ In strtok_r() the save_pointer is provided by the caller
 >> allocated resources (locks, buffers, etc.) are freed?  In a few
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
+
+
 
 ---- SYNCHRONIZATION ----
 

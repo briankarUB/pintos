@@ -117,12 +117,30 @@ defragmentation to minimize the possible number of inspections.
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
 
+A synchronization variable will be used in the "exec" call that waits
+for the executable load function to return before allowing exec to
+return. Perhaps setting the value of a struct variable on the calling
+thread will be required to pass the data inter-thread as required.
+
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
 >> calls wait(C) before C exits?  After C exits?  How do you ensure
 >> that all resources are freed in each case?  How about when P
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
+
+a. P must wait on a synchronization variable that C holds before 
+   wait(C) can return.
+b. In this case P will acquire the aforementioned synchronization
+   variable immediately, so no blocking will occur.
+c. Processes, when exiting, should free child resources, then
+   free the resources they hold themselves.
+d. C will be forced to terminate and release its resources, because
+   processes cannot exist without a parent (except the root process).
+e. Nothing special to consider here.
+f. Perhaps if a process crashes, there will be issues freeing the
+   resources it held. We will be on the lookout for these, fixing
+   them as the project progresses.
 
 ---- RATIONALE ----
 

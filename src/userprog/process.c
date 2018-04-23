@@ -18,8 +18,16 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+#define ARGV_SIZE_LIMIT 512
+#define ARGC_LIMIT 32
+
+#define PUSH_POINTER(ESP, PTR, TYPE) \
+  (ESP) -= sizeof (TYPE); \
+  *((TYPE *) (ESP)) = (TYPE) (PTR);
+
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static void tokenize_command (const char *cmdline, void **esp);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -88,7 +96,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  for (;;) /* TODO */
+  while (1);
   NOT_REACHED ();
 }
 
@@ -302,12 +310,15 @@ load (const char *file_name, void (**eip) (void), void **esp)
         }
     }
 
+
   /* Set up stack. */
   if (!setup_stack (esp))
     goto done;
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
+  
+  tokenize_command (file_name, esp); /* TODO */
 
   success = true;
 
@@ -438,7 +449,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 12; /* TODO */
+        *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
     }
@@ -463,4 +474,52 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+static void
+tokenize_command (const char *cmdline, void **esp)
+{
+  char *esp_ = (char *) *esp; /* Working stack pointer. */
+
+  char buf[ARGV_SIZE_LIMIT]; /* Buffer to copy and tokenize cmdline. */
+  char *argv[ARGC_LIMIT]; /* Array of pointers to arguments on stack. */
+  char *token, *save_ptr;
+  size_t argc = 0;
+
+  /* Copy cmdline into the above buffer. */
+  strlcpy (buf, cmdline, ARGV_SIZE_LIMIT);
+
+  /* Tokenize the cmdline. */
+  for (token = strtok_r (buf, " ", &save_ptr); token != NULL;
+       token = strtok_r (NULL, " ", &save_ptr))
+    {
+      esp_ -= strlen (token) + 1;
+      argv[argc++] = esp_;
+
+      /* Copy this token onto the stack. */
+      strlcpy (esp_, token, ARGV_SIZE_LIMIT);
+    }
+
+  /* Word alignment. */
+  while ((uintptr_t) esp_ % 4 != 0)
+    --esp_;
+
+  /* argv[argc] must be a null pointer. */
+  PUSH_POINTER (esp_, NULL, char *);
+
+  /* Push the argv pointers onto the stack. */
+  esp_ -= argc * sizeof (char *);
+  memcpy (esp_, argv, argc * sizeof (char *));
+
+  /* Push the pointer to argv[0] onto the stack. */
+  PUSH_POINTER (esp_, esp_ + sizeof (char **), char *);
+
+  /* Push a fake return address (RA) onto the stack. */
+  PUSH_POINTER (esp_, NULL, uintptr_t);
+
+  // size_t total = *esp - (void *) esp_;
+  // hex_dump (*esp - total, *esp - total, total, true);
+
+  /* Set the real stack pointer to where the working pointer is. */
+  *esp = (void *) esp_;
 }

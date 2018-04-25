@@ -36,7 +36,12 @@ tid_t
 process_execute (const char *file_name)
 {
   char *fn_copy;
+  char executable_name[ARGV_SIZE_MAX];
   tid_t tid;
+
+  /* Figure out the executable name, store it for later use.
+     TODO: There's probably a better way to do this. */
+  get_file_name (file_name, executable_name);
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -46,7 +51,7 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (executable_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
   return tid;

@@ -3,45 +3,46 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "devices/shutdown.h"
+
+#define SYSCALL(NUM, RETURNS) \
+  static uint32_t syscall_##NUM##__ (uint32_t *args UNUSED, size_t idx__ UNUSED)
+
+#define REGISTER(NUM, RETURNS) \
+  DISPATCH_TABLE[NUM].fn = syscall_##NUM##__; \
+  DISPATCH_TABLE[NUM].returns = RETURNS
+
+#define ARG(TYPE, NAME) TYPE NAME = (TYPE) args[++idx__]
+
+struct strategy
+  {
+    uint32_t (*fn) (uint32_t *, size_t);
+    bool returns;
+  };
+
+static struct strategy DISPATCH_TABLE[20];
 
 static void syscall_handler (struct intr_frame *);
 
-static int write (int fd, const char *buffer, unsigned size);
-static void exit (int status);
-
-void
-syscall_init (void)
+SYSCALL (SYS_HALT, false)
 {
-  intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  shutdown_power_off ();
 }
 
-static void
-syscall_handler (struct intr_frame *f)
+SYSCALL (SYS_EXIT, false) /* TODO: Wake up waiting threads? */
 {
-  uint32_t *args = (uint32_t *) f->esp;
-  uint32_t ret = f->eax;
+  ARG (int, status);
 
-  // printf ("system call %d!\n", args[0]);
-
-  switch (args[0])
-  {
-    case SYS_WRITE:
-      ret = write ((int) args[1], (const char *) args[2], (unsigned) args[3]);
-      break;
-    case SYS_EXIT: /* TODO */
-      exit ((int) args[1]);
-      break;
-    default: /* TODO */
-      PANIC ("Unhandled system call");
-      break;
-  }
-
-  f->eax = ret;
+  printf ("%s: exit(%d)\n", thread_current ()->name, status);
+  thread_exit ();
 }
 
-static int
-write (int fd, const char *buffer, unsigned size)
+SYSCALL (SYS_WRITE, true) /* TODO: Handle other fd besides 1 */
 {
+  ARG (int, fd);
+  ARG (const char *, buffer);
+  ARG (unsigned, size);
+
   switch (fd)
   {
     case 1:
@@ -52,9 +53,24 @@ write (int fd, const char *buffer, unsigned size)
   }
 }
 
-static void
-exit (int status)
+void
+syscall_init (void)
 {
-  printf ("%s: exit(%d)\n", thread_current ()->name, status);
-  thread_exit ();
+  REGISTER (SYS_HALT, false);
+  REGISTER (SYS_EXIT, false);
+  REGISTER (SYS_WRITE, true);
+
+  intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+}
+
+static void
+syscall_handler (struct intr_frame *f)
+{
+  uint32_t *args = (uint32_t *) f->esp;
+  struct strategy strat = DISPATCH_TABLE[args[0]];
+
+  if (strat.returns)
+    f->eax = strat.fn (args, 0);
+  else
+    strat.fn (args, 0);
 }

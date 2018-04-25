@@ -514,8 +514,7 @@ tokenize (const char *cmdline, char **esp)
     }
 
   /* Word-align ESP (to a multiple of 4). */
-  while (((uintptr_t) *esp) % 4 != 0)
-    --(*esp);
+  *esp = (char *) ROUND_DOWN ((uintptr_t) *esp, 4);
 
   /* Push argv pointers to the stack in order, including argv[argc] = NULL */
   *esp -= (argc + 1) * sizeof (char *);

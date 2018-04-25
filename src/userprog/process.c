@@ -231,7 +231,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open ("echo");
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
@@ -483,8 +483,9 @@ tokenize_command (const char *cmdline, void **esp)
 
   char buf[ARGV_SIZE_LIMIT]; /* Buffer to copy and tokenize cmdline. */
   char *argv[ARGC_LIMIT]; /* Array of pointers to arguments on stack. */
+  char args[ARGV_SIZE_LIMIT];
   char *token, *save_ptr;
-  size_t argc = 0;
+  size_t argc = 0, len = 0;
 
   /* Copy cmdline into the above buffer. */
   strlcpy (buf, cmdline, ARGV_SIZE_LIMIT);
@@ -494,11 +495,15 @@ tokenize_command (const char *cmdline, void **esp)
        token = strtok_r (NULL, " ", &save_ptr))
     {
       esp_ -= strlen (token) + 1;
+      len += strlen (token) + 1;
       argv[argc++] = esp_;
 
       /* Copy this token onto the stack. */
-      strlcpy (esp_, token, ARGV_SIZE_LIMIT);
+      // strlcpy (esp_, token, ARGV_SIZE_LIMIT);
     }
+
+  /* Copy all arguments onto the stack at once. */
+  memcpy (esp_, argv, len);
 
   /* Word alignment. */
   while ((uintptr_t) esp_ % 4 != 0)
@@ -518,7 +523,8 @@ tokenize_command (const char *cmdline, void **esp)
   PUSH_POINTER (esp_, NULL, uintptr_t);
 
   // size_t total = *esp - (void *) esp_;
-  // hex_dump (*esp - total, *esp - total, total, true);
+  size_t total = 52;
+  hex_dump (*esp - total, *esp - total, total, true);
 
   /* Set the real stack pointer to where the working pointer is. */
   *esp = (void *) esp_;

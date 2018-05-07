@@ -6,6 +6,14 @@
 #include "devices/shutdown.h"
 #include "filesys/filesys.h"
 #include "userprog/process.h"
+#include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+#include <string.h>
+
+#define VERIFY(PTR) \
+  if ((PTR) == NULL) exit (-1); \
+  if (!is_user_vaddr ((PTR))) exit (-1); \
+  if (pagedir_get_page (thread_current ()->pagedir, (PTR)) == NULL) exit (-1)
 
 static void syscall_handler (struct intr_frame *);
 
@@ -22,10 +30,6 @@ static int write (int fd, const void *buffer, unsigned size);
 static void seek (int fd, unsigned position);
 static unsigned tell (int fd);
 static void close (int fd);
-
-/* Memory management */
-static int get_user (const uint8_t *uaddr);
-static bool put_user (uint8_t *udst, uint8_t byte);
 
 void
 syscall_init (void)
@@ -107,7 +111,13 @@ exit (int status) /* TODO: Make sure this plays nicely with wait. */
 static int
 write (int fd, const void *buffer, unsigned size)
 {
-  if (fd == 1)
+  VERIFY (buffer);
+
+  if (fd == 0)
+    {
+      exit (-1);
+    }
+  else if (fd == 1)
     {
       putbuf (buffer, size);
       return size;
@@ -120,6 +130,8 @@ write (int fd, const void *buffer, unsigned size)
 
 static tid_t exec (const char *cmd_line)
 {
+  VERIFY (cmd_line);
+
   return process_execute (cmd_line);
 }
 
@@ -130,16 +142,25 @@ static int wait (tid_t pid)
 
 static bool create (const char *file, unsigned initial_size)
 {
+  VERIFY (file);
+
   return filesys_create (file, initial_size);
 }
 
 static bool remove (const char *file)
 {
+  VERIFY (file);
+
   return filesys_remove (file);
 }
 
 static int open (const char *file)
 {
+  VERIFY (file);
+
+  if (strcmp (file, "") == 0)
+    exit (1);
+
   struct file *f = filesys_open (file);
   PANIC ("open - Not implemented"); /* TODO */
 }
@@ -151,6 +172,12 @@ static int filesize (int fd)
 
 static int read (int fd, void *buffer, unsigned size)
 {
+  VERIFY (buffer);
+
+  /* Can't read from STDOUT. */
+  if (fd == 1)
+    exit (-1);
+
   PANIC ("read - Not implemented"); /* TODO */
 }
 
@@ -166,30 +193,9 @@ static unsigned tell (int fd)
 
 static void close (int fd)
 {
+  /* Can't close STDIN or STDOUT. */
+  if (fd == 0 || fd == 1)
+    exit (-1);
+
   PANIC ("close - Not implemented"); /* TODO */
-}
-
-/* Reads a byte at user virtual address UADDR.
-UADDR must be below PHYS_BASE.
-Returns the byte value if successful, -1 if a segfault
-occurred. */
-static int
-get_user (const uint8_t *uaddr)
-{
-   int result;
-   asm ("movl $1f, %0; movzbl %1, %0; 1:"
-      : "=&a" (result) : "m" (*uaddr));
-   return result;
-}
-
-/* Writes BYTE to user address UDST.
-UDST must be below PHYS_BASE.
-Returns true if successful, false if a segfault occurred. */
-static bool
-put_user (uint8_t *udst, uint8_t byte)
-{
-   int error_code;
-   asm ("movl $1f, %0; movb %b2, %1; 1:"
-      : "=&a" (error_code), "=m" (*udst) : "q" (byte));
-   return error_code != -1;
 }

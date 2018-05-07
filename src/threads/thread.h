@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -98,8 +99,19 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
 #endif
 
+    tid_t parent;                       /* The tid that spawned this thread. */
+
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+  };
+
+/* Stores information regarding the 
+   exit states of various threads. */
+struct thread_exit_block
+  {
+    int status;                 /* The thread's exit status code. */
+    struct condition cond;      /* Signals when thread exits. */
+    struct lock lock;           /* Backing lock for the condition variable. */
   };
 
 /* If false (default), use round-robin scheduler.
@@ -137,5 +149,7 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+struct thread_exit_block *thread_get_exit_block (tid_t);
 
 #endif /* threads/thread.h */

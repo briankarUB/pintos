@@ -98,10 +98,22 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED)
+process_wait (tid_t child_tid)
 {
-  while (1);
-  NOT_REACHED ();
+  // printf ("A0. wait requested on %d\n", child_tid);
+  struct thread_exit_block *block = thread_get_exit_block (child_tid);
+
+  // printf ("A1. found it, acquiring...\n");
+  lock_acquire (&block->lock);
+  // printf ("A2. acquired. waiting for broadcast...\n");
+  cond_wait (&block->cond, &block->lock);
+  // printf ("A3. received. releasing lock...\n");
+  lock_release (&block->lock);
+  // printf ("A4. released. will now wait forever\n");
+
+  return block->status;
+  // while (1);
+  // NOT_REACHED ();
 }
 
 /* Free the current process's resources. */
@@ -109,6 +121,7 @@ void
 process_exit (void)
 {
   struct thread *cur = thread_current ();
+  struct thread_exit_block *block = thread_get_exit_block (cur->tid);
   uint32_t *pd;
 
   /* Destroy the current process's page directory and switch back
@@ -127,6 +140,15 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+
+  /* Notify waiters that this process has exited. */
+  // printf ("B0. exiting, waiting for lock acquire...\n");
+  lock_acquire (&block->lock);
+  // printf ("B1. acquired, will now broadcast.\n");
+  cond_broadcast (&block->cond, &block->lock);
+  // printf ("B2. message broadcasted!\n");
+  lock_release (&block->lock);
+  // printf ("B3. returning from process_exit\n");
 }
 
 /* Sets up the CPU for running user code in the current

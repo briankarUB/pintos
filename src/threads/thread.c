@@ -59,6 +59,11 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
+/* Array of thread_exit_blocks where the 
+   index into the array is the tracked tid. */
+#define MAX_EXIT_BLOCKS 256
+static struct thread_exit_block exit_blocks[MAX_EXIT_BLOCKS];
+
 static void kernel_thread (thread_func *, void *aux);
 
 static void idle (void *aux UNUSED);
@@ -170,6 +175,7 @@ thread_create (const char *name, int priority,
   struct kernel_thread_frame *kf;
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
+  struct thread_exit_block *teb;
   tid_t tid;
 
   ASSERT (function != NULL);
@@ -197,6 +203,12 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
+
+  /* Initialize a thread_exit_block for this thread. */
+  teb = &exit_blocks[tid];
+  teb->status = -1;
+  lock_init (&teb->lock);
+  cond_init (&teb->cond);
 
   /* Add to run queue. */
   thread_unblock (t);
@@ -540,6 +552,12 @@ thread_schedule_tail (struct thread *prev)
       ASSERT (prev != cur);
       palloc_free_page (prev);
     }
+}
+
+struct thread_exit_block *
+thread_get_exit_block (tid_t tid)
+{
+  return &exit_blocks[tid];
 }
 
 /* Schedules a new process.  At entry, interrupts must be off and

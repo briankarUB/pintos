@@ -42,8 +42,7 @@ syscall_handler (struct intr_frame *f)
 {
   uint32_t *args = (uint32_t *) f->esp;
 
-  /* Dispatch based on syscall number.
-     TODO: Maybe there's a more modular(?) way to do this, but who cares? */
+  /* Dispatch based on syscall number. */
   switch (args[0])
     {
       case SYS_HALT:
@@ -53,28 +52,28 @@ syscall_handler (struct intr_frame *f)
         exit((int) args[1]);
         return;
       case SYS_EXEC:
-        f->eax = exec ((const char *) args[1]); /* TODO: Check pointer */
+        f->eax = exec ((const char *) args[1]);
         return;
       case SYS_WAIT:
         f->eax = wait ((tid_t) args[1]);
         return;
       case SYS_CREATE:
-        f->eax = create ((const char *) args[1], (unsigned) args[2]); /* TODO: Check pointer */
+        f->eax = create ((const char *) args[1], (unsigned) args[2]);
         return;
       case SYS_REMOVE:
-        f->eax = remove ((const char *) args[1]); /* TODO: Check pointer */
+        f->eax = remove ((const char *) args[1]);
         return;
       case SYS_OPEN:
-        f->eax = open ((const char *) args[1]); /* TODO: Check pointer */
+        f->eax = open ((const char *) args[1]);
         return;
       case SYS_FILESIZE:
         f->eax = filesize ((int) args[1]);
         return;
       case SYS_READ:
-        f->eax = read ((int) args[1], (void *) args[2], (unsigned) args[3]); /* TODO: Check pointer */
+        f->eax = read ((int) args[1], (void *) args[2], (unsigned) args[3]);
         return;
       case SYS_WRITE:
-        f->eax = write ((int) args[1], (const void *) args[2], (unsigned) args[3]); /* TODO: Check pointer */
+        f->eax = write ((int) args[1], (const void *) args[2], (unsigned) args[3]);
         return;
       case SYS_SEEK:
         seek ((int) args[1], (unsigned) args[2]);

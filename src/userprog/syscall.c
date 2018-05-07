@@ -31,9 +31,18 @@ static void seek (int fd, unsigned position);
 static unsigned tell (int fd);
 static void close (int fd);
 
+struct lock filesys_lock;
+
+struct p_file {
+  struct file *file;
+  int fd;
+  struct list_elem elem;
+};
+
 void
 syscall_init (void)
 {
+  lock_init(&filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -159,9 +168,16 @@ static int open (const char *file)
 
   if (strcmp (file, "") == 0)
     exit (1);
-
+    lock_acquire(&filesys_lock);
   struct file *f = filesys_open (file);
-  PANIC ("open - Not implemented"); /* TODO */
+  struct p_file *pf = malloc(sizeof(struct p_file));
+  pf->file = f;
+  pf->fd = thread_current()->fd;
+  thread_current()->fd++;
+  list_push_back(&thread_current()->file_list, &pf->elem);
+  lock_release(&filesys_lock);
+  return pf->fd;
+
 }
 
 static int filesize (int fd)

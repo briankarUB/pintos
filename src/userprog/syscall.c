@@ -157,8 +157,9 @@ static int open (const char *file)
 {
   VERIFY (file);
 
+  /* Can't open empty string filename. */
   if (strcmp (file, "") == 0)
-    exit (1);
+    return -1;
 
   struct file *f = filesys_open (file);
   PANIC ("open - Not implemented"); /* TODO */

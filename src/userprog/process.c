@@ -104,6 +104,9 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid)
 {
+  if ((child_tid<0)||(child_tid>=BITVECTOR_COUNT)){
+    return -1;
+  }
   struct bitvector* bit_list= &thread_current()->waited_tids;
   //alread waited for the tid
   if (bitvector_get(bit_list, child_tid)){

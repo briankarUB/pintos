@@ -1,4 +1,5 @@
 #include "bitvector.h"
+#include <debug.h>
 
 void
 bitvector_init (struct bitvector *vec)
@@ -21,7 +22,7 @@ bitvector_get (struct bitvector *vec, size_t index)
   size_t bit_index = index % sizeof (bv_cnt_t);
   bv_cnt_t ch = vec->value[ch_index];
 
-  return (bool) ((ch >>> bit_index) & 0x1);
+  return (bool) ((ch >> bit_index) & 0x1);
 }
 
 void

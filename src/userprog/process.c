@@ -104,6 +104,14 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid)
 {
+  struct bitvector* bit_list= &thread_current()->waited_tids;
+  //alread waited for the tid
+  if (bitvector_get(bit_list, child_tid)){
+    return -1;
+  }
+  else{
+    bitvector_set(bit_list,child_tid,true);
+  }
   // printf ("A0. wait requested on %d\n", child_tid);
   struct thread_exit_block *block = thread_get_exit_block (child_tid);
 

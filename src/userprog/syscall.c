@@ -292,8 +292,8 @@ get_pf (int fd)
 static bool
 is_pf_valid (const struct p_file *pf)
 {
-  return (pf != NULL 
-            && pf->file != NULL 
-            && pf->valid 
+  return (pf != NULL
+            && pf->file != NULL
+            && pf->valid
             && thread_current ()->tid == pf->owner);
 }

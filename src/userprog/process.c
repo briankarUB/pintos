@@ -43,6 +43,10 @@ process_execute (const char *file_name)
      TODO: There's probably a better way to do this. */
   get_file_name (file_name, executable_name);
 
+  /* Check if the executable exists. */
+  if (!filesys_exists (executable_name))
+    return TID_ERROR;
+
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);

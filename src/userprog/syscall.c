@@ -44,6 +44,7 @@ static struct lock filesys_lock;
 struct p_file {
   struct file *file;
   bool valid;
+  tid_t owner;
 };
 
 #define MAX_FD_COUNT 256
@@ -208,6 +209,7 @@ static int open (const char *file)
 
   openfiles[fd].file = f;
   openfiles[fd].valid = true;
+  openfiles[fd].owner = thread_current ()->tid;
 
   lock_release(&filesys_lock);
   return fd++;
@@ -239,10 +241,10 @@ static int read (int fd, void *buffer, unsigned size)
 
   lock_acquire (&filesys_lock);
 
-  struct p_file *pf = &openfiles[fd];
+  struct p_file *pf = get_pf (fd);
   off_t count = 0;
 
-  if (pf->file != NULL && pf->valid)
+  if (is_pf_valid (pf))
     count = file_read (pf->file, buffer, size);
   else
     count = -1;
@@ -290,5 +292,8 @@ get_pf (int fd)
 static bool
 is_pf_valid (const struct p_file *pf)
 {
-  return (pf != NULL && pf->file != NULL && pf->valid);
+  return (pf != NULL 
+            && pf->file != NULL 
+            && pf->valid 
+            && thread_current ()->tid == pf->owner);
 }

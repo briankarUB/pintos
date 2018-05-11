@@ -101,3 +101,15 @@ do_format (void)
   free_map_close ();
   printf ("done.\n");
 }
+
+bool
+filesys_exists (const char *name)
+{
+  struct file *f = filesys_open (name);
+  bool exists = (f != NULL);
+
+  if (exists)
+    file_close (f);
+  
+  return exists;
+}

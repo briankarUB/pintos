@@ -15,6 +15,9 @@
   if (!is_user_vaddr ((PTR))) exit (-1); \
   if (pagedir_get_page (thread_current ()->pagedir, (PTR)) == NULL) exit (-1)
 
+#define VERIFY_VALUE(ARG) \
+  if (!is_user_vaddr (&(ARG))) exit (-1)
+
 static void syscall_handler (struct intr_frame *);
 
 /* Syscalls */
@@ -31,15 +34,26 @@ static void seek (int fd, unsigned position);
 static unsigned tell (int fd);
 static void close (int fd);
 
+struct lock filesys_lock;
+
+struct p_file {
+  struct file *file;
+  int fd;
+  struct list_elem elem;
+};
+
 void
 syscall_init (void)
 {
+  lock_init(&filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
 static void
 syscall_handler (struct intr_frame *f)
 {
+  VERIFY (f->esp);
+
   uint32_t *args = (uint32_t *) f->esp;
 
   /* Dispatch based on syscall number. */
@@ -49,15 +63,18 @@ syscall_handler (struct intr_frame *f)
         halt ();
         return;
       case SYS_EXIT:
+        VERIFY_VALUE (args[1]);
         exit((int) args[1]);
         return;
       case SYS_EXEC:
         f->eax = exec ((const char *) args[1]);
         return;
       case SYS_WAIT:
-        f->eax = wait ((tid_t) args[1]);
+        VERIFY_VALUE (args[1]);
+        f->eax = wait (args[1]);
         return;
       case SYS_CREATE:
+        VERIFY_VALUE (args[2]);
         f->eax = create ((const char *) args[1], (unsigned) args[2]);
         return;
       case SYS_REMOVE:
@@ -67,21 +84,30 @@ syscall_handler (struct intr_frame *f)
         f->eax = open ((const char *) args[1]);
         return;
       case SYS_FILESIZE:
+        VERIFY_VALUE (args[1]);
         f->eax = filesize ((int) args[1]);
         return;
       case SYS_READ:
+        VERIFY_VALUE (args[1]);
+        VERIFY_VALUE (args[3]);
         f->eax = read ((int) args[1], (void *) args[2], (unsigned) args[3]);
         return;
       case SYS_WRITE:
+        VERIFY_VALUE (args[1]);
+        VERIFY_VALUE (args[3]);
         f->eax = write ((int) args[1], (const void *) args[2], (unsigned) args[3]);
         return;
       case SYS_SEEK:
+        VERIFY_VALUE (args[1]);
+        VERIFY_VALUE (args[2]);
         seek ((int) args[1], (unsigned) args[2]);
         return;
       case SYS_TELL:
+        VERIFY_VALUE (args[1]);
         f->eax = tell ((int) args[1]);
         return;
       case SYS_CLOSE:
+        VERIFY_VALUE (args[1]);
         close ((int) args[1]);
         return;
       default:
@@ -161,8 +187,23 @@ static int open (const char *file)
   if (strcmp (file, "") == 0)
     return -1;
 
+  lock_acquire(&filesys_lock);
   struct file *f = filesys_open (file);
-  PANIC ("open - Not implemented"); /* TODO */
+
+  if (f == NULL)
+    {
+      lock_release (&filesys_lock);
+      return -1;
+    }
+
+  struct p_file *pf = malloc(sizeof(struct p_file));
+  pf->file = f;
+  pf->fd = thread_current()->fd;
+  thread_current()->fd++;
+  list_push_back(&thread_current()->file_list, &pf->elem);
+  lock_release(&filesys_lock);
+  return pf->fd;
+
 }
 
 static int filesize (int fd)

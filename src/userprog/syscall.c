@@ -270,12 +270,35 @@ static int read (int fd, void *buffer, unsigned size)
 
 static void seek (int fd, unsigned position)
 {
-  PANIC ("seek - Not implemented"); /* TODO */
+  //PANIC ("seek - Not implemented"); /* TODO */
+  struct p_file *pf = get_pf (fd);
+
+  lock_acquire (&filesys_lock);
+
+  if (is_pf_valid (pf))
+    {
+      file_seek (pf->file,position);
+    }
+
+  lock_release (&filesys_lock);
 }
 
 static unsigned tell (int fd)
 {
-  PANIC ("tell - Not implemented"); /* TODO */
+  //PANIC ("tell - Not implemented"); /* TODO */
+  struct p_file *pf = get_pf (fd);
+  off_t tell = 0;
+
+  lock_acquire (&filesys_lock);
+
+  if (is_pf_valid (pf))
+    {
+      tell = file_tell (pf->file);
+    }
+
+  lock_release (&filesys_lock);
+  return tell;
+
 }
 
 static void close (int fd)

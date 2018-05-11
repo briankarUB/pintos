@@ -9,6 +9,7 @@
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include <string.h>
+#include "filesys/file.h"
 
 #define VERIFY(PTR) \
   if ((PTR) == NULL) exit (-1); \
@@ -33,6 +34,10 @@ static int write (int fd, const void *buffer, unsigned size);
 static void seek (int fd, unsigned position);
 static unsigned tell (int fd);
 static void close (int fd);
+
+/* Utils */
+static struct p_file *get_pf (int fd);
+static bool is_pf_valid (const struct p_file *pf);
 
 static struct lock filesys_lock;
 
@@ -210,7 +215,18 @@ static int open (const char *file)
 
 static int filesize (int fd)
 {
-  PANIC ("filesize - Not implemented"); /* TODO */
+  struct p_file *pf = get_pf (fd);
+  off_t len = 0;
+
+  lock_acquire (&filesys_lock);
+
+  if (is_pf_valid (pf))
+    {
+      len = file_length (pf->file);
+    }
+
+  lock_release (&filesys_lock);
+  return len;
 }
 
 static int read (int fd, void *buffer, unsigned size)
@@ -221,7 +237,19 @@ static int read (int fd, void *buffer, unsigned size)
   if (fd == 1)
     exit (-1);
 
-  PANIC ("read - Not implemented"); /* TODO */
+  lock_acquire (&filesys_lock);
+
+  struct p_file *pf = &openfiles[fd];
+  off_t count = 0;
+
+  if (pf->file != NULL && pf->valid)
+    count = file_read (pf->file, buffer, size);
+  else
+    count = -1;
+
+  lock_release (&filesys_lock);
+  return count;
+  // PANIC ("read - Not implemented"); /* TODO */
 }
 
 static void seek (int fd, unsigned position)
@@ -236,9 +264,31 @@ static unsigned tell (int fd)
 
 static void close (int fd)
 {
-  /* Can't close STDIN or STDOUT. */
-  if (fd == 0 || fd == 1)
-    exit (-1);
+  struct p_file *pf = get_pf (fd);
 
-  PANIC ("close - Not implemented"); /* TODO */
+  lock_acquire (&filesys_lock);
+
+  if (is_pf_valid (pf))
+    {
+      file_close (pf->file);
+      pf->file = NULL;
+      pf->valid = false;
+    }
+
+  lock_release (&filesys_lock);
+}
+
+static struct p_file *
+get_pf (int fd)
+{
+  if (fd < 2 || fd >= MAX_FD_COUNT)
+    return NULL;
+
+  return &openfiles[fd];
+}
+
+static bool
+is_pf_valid (const struct p_file *pf)
+{
+  return (pf != NULL && pf->file != NULL && pf->valid);
 }

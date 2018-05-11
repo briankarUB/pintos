@@ -157,7 +157,21 @@ write (int fd, const void *buffer, unsigned size)
     }
   else /* TODO: Implement write for fd != 1 */
     {
-      PANIC ("write - Not implemented for fd != 1");
+
+      //PANIC ("write - Not implemented for fd != 1");
+      lock_acquire (&filesys_lock);
+
+      struct p_file *pf = get_pf (fd);
+      off_t count = 0;
+
+      if (is_pf_valid (pf))
+        count = file_write (pf->file, buffer, size);
+      else
+        count = -1;
+
+      lock_release (&filesys_lock);
+      return count;
+
     }
 }
 

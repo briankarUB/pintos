@@ -34,13 +34,15 @@ static void seek (int fd, unsigned position);
 static unsigned tell (int fd);
 static void close (int fd);
 
-struct lock filesys_lock;
+static struct lock filesys_lock;
 
 struct p_file {
   struct file *file;
-  int fd;
-  struct list_elem elem;
+  bool valid;
 };
+
+#define MAX_FD_COUNT 256
+static struct p_file openfiles[MAX_FD_COUNT];
 
 void
 syscall_init (void)
@@ -183,12 +185,15 @@ static int open (const char *file)
 {
   VERIFY (file);
 
+  struct file *f;
+  static int fd = 2;
+
   /* Can't open empty string filename. */
   if (strcmp (file, "") == 0)
     return -1;
 
   lock_acquire(&filesys_lock);
-  struct file *f = filesys_open (file);
+  f = filesys_open (file);
 
   if (f == NULL)
     {
@@ -196,14 +201,11 @@ static int open (const char *file)
       return -1;
     }
 
-  struct p_file *pf = malloc(sizeof(struct p_file));
-  pf->file = f;
-  pf->fd = thread_current()->fd;
-  thread_current()->fd++;
-  list_push_back(&thread_current()->file_list, &pf->elem);
-  lock_release(&filesys_lock);
-  return pf->fd;
+  openfiles[fd].file = f;
+  openfiles[fd].valid = true;
 
+  lock_release(&filesys_lock);
+  return fd++;
 }
 
 static int filesize (int fd)

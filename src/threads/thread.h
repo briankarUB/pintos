@@ -103,11 +103,6 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
-
-
-    struct list file_list;              /* List of open files */
-    int fd;                             /* file descriptor */
-
   };
 
 /* Stores information regarding the

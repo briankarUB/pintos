@@ -16,7 +16,7 @@ bool
 bitvector_get (struct bitvector *vec, size_t index)
 {
   ASSERT (vec != NULL);
-  ASSERT (index < (sizeof (bv_cnt_t) * BITVECTOR_SIZE));
+  ASSERT (index < BITVECTOR_COUNT);
 
   size_t ch_index = (size_t) (index / sizeof (bv_cnt_t));
   size_t bit_index = index % sizeof (bv_cnt_t);
@@ -29,7 +29,7 @@ void
 bitvector_set (struct bitvector *vec, size_t index, bool value)
 {
   ASSERT (vec != NULL);
-  ASSERT (index < (sizeof (bv_cnt_t) * BITVECTOR_SIZE));
+  ASSERT (index < BITVECTOR_COUNT);
 
   size_t ch_index = (size_t) (index / sizeof (bv_cnt_t));
   size_t bit_index = index % sizeof (bv_cnt_t);

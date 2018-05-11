@@ -5,9 +5,11 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#define BITVECTOR_SIZE 8
+typedef uint32_t bv_cnt_t;
 
-typedef uint8_t bv_cnt_t;
+#define BITVECTOR_SIZE 8
+#define BITVECTOR_COUNT (sizeof (bv_cnt_t) * BITVECTOR_SIZE)
+
 
 struct bitvector
   {

@@ -8,12 +8,12 @@
 typedef uint32_t bv_cnt_t;
 
 #define BITVECTOR_SIZE 8
-#define BITVECTOR_COUNT (sizeof (bv_cnt_t) * BITVECTOR_SIZE)
+#define BITVECTOR_COUNT ((int) (sizeof (bv_cnt_t) * BITVECTOR_SIZE))
 
 
 struct bitvector
   {
-    bv_cnt_t value[BITVECTOR_SIZE]; 
+    bv_cnt_t value[BITVECTOR_SIZE];
   };
 
 void bitvector_init (struct bitvector *vec);

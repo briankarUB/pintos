@@ -155,10 +155,8 @@ write (int fd, const void *buffer, unsigned size)
       putbuf (buffer, size);
       return size;
     }
-  else /* TODO: Implement write for fd != 1 */
+  else
     {
-
-      //PANIC ("write - Not implemented for fd != 1");
       lock_acquire (&filesys_lock);
 
       struct p_file *pf = get_pf (fd);
@@ -171,7 +169,6 @@ write (int fd, const void *buffer, unsigned size)
 
       lock_release (&filesys_lock);
       return count;
-
     }
 }
 
@@ -265,12 +262,10 @@ static int read (int fd, void *buffer, unsigned size)
 
   lock_release (&filesys_lock);
   return count;
-  // PANIC ("read - Not implemented"); /* TODO */
 }
 
 static void seek (int fd, unsigned position)
 {
-  //PANIC ("seek - Not implemented"); /* TODO */
   struct p_file *pf = get_pf (fd);
 
   lock_acquire (&filesys_lock);
@@ -285,7 +280,6 @@ static void seek (int fd, unsigned position)
 
 static unsigned tell (int fd)
 {
-  //PANIC ("tell - Not implemented"); /* TODO */
   struct p_file *pf = get_pf (fd);
   off_t tell = 0;
 

@@ -104,31 +104,24 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid)
 {
-  if ((child_tid<0)||(child_tid>=BITVECTOR_COUNT)){
+  if (child_tid < 0 || child_tid >= BITVECTOR_COUNT)
     return -1;
-  }
-  struct bitvector* bit_list= &thread_current()->waited_tids;
-  //alread waited for the tid
-  if (bitvector_get(bit_list, child_tid)){
+
+  struct bitvector* bit_list = &(thread_current()->waited_tids);
+
+  /* Already waited for child_tid */
+  if (bitvector_get (bit_list, child_tid))
     return -1;
-  }
-  else{
-    bitvector_set(bit_list,child_tid,true);
-  }
-  // printf ("A0. wait requested on %d\n", child_tid);
+  else
+    bitvector_set(bit_list, child_tid, true);
+
   struct thread_exit_block *block = thread_get_exit_block (child_tid);
 
-  // printf ("A1. found it, acquiring...\n");
   lock_acquire (&block->lock);
-  // printf ("A2. acquired. waiting for broadcast...\n");
   cond_wait (&block->cond, &block->lock);
-  // printf ("A3. received. releasing lock...\n");
   lock_release (&block->lock);
-  // printf ("A4. released. will now wait forever\n");
 
   return block->status;
-  // while (1);
-  // NOT_REACHED ();
 }
 
 /* Free the current process's resources. */
@@ -156,14 +149,13 @@ process_exit (void)
       pagedir_destroy (pd);
     }
 
+  /* Release the executable file */
+  file_close (cur->executable_file);
+
   /* Notify waiters that this process has exited. */
-  // printf ("B0. exiting, waiting for lock acquire...\n");
   lock_acquire (&block->lock);
-  // printf ("B1. acquired, will now broadcast.\n");
   cond_broadcast (&block->cond, &block->lock);
-  // printf ("B2. message broadcasted!\n");
   lock_release (&block->lock);
-  // printf ("B3. returning from process_exit\n");
 }
 
 /* Sets up the CPU for running user code in the current
@@ -284,6 +276,7 @@ load (const char *cmdline, void (**eip) (void), void **esp)
     }
 
   file_deny_write (file);
+  t->executable_file = file;
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -370,9 +363,11 @@ load (const char *cmdline, void (**eip) (void), void **esp)
 
   success = true;
 
+ /* We arrive here whether the load is successful or not. */
  done:
-  /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  if (!success)
+    file_close (file);
+
   return success;
 }
 

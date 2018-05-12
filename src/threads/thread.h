@@ -102,6 +102,7 @@ struct thread
 #endif
 
     tid_t parent;                       /* The tid that spawned this thread. */
+    struct file *executable_file;       /* The file this thread is running */
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

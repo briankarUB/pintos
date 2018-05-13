@@ -71,10 +71,15 @@ Each file has only one file descriptor to prevent ambiguity.
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
 
-We read and write files using a buffer. When we read a file, we use a lock
-so that the filesystem is not accessed or used by another process. Then, we use
-file_read to actually read the file. For writing, we also use a lock, and then use
-file_write to write/print out what's in the file. 
+For reading, we use a helper function called VERIFY(defined in syscall.c) to make sure the buffer is not empty. If it is, VERIFY exits with status -1.
+Otherwise, if VERIFY doesn not exit, we get an fd from the buffer. Then, we wait to acquire a filesystems lock, to make sure that the file
+we're reading is not manipulated by other processes while we are reading it. Then, we use get_pf(fd) to go from fd, which is an int, to a pointer
+which points to the corresponding file we are about to read. Again, we make sure this file is valid, and use the function file_read from file.c
+to actually read the file. We store its return value in count. Then we release the lock, because we're done reading. Finally, we return count,
+which tells us how many bytes of the file were read.
+
+For writing, the process is very similar. We use the same lock that we use for read. The only real difference is obviously that we use 
+file_write from file.c instead of file_read, but the overall process is basically the same. 
 
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least

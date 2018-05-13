@@ -113,7 +113,14 @@ defragmentation to minimize the possible number of inspections.
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
-
+First of all, we use helper functions called VERIFY and VERIFY_VALUE to handle exceptions. We wrote these functions towards the stop of 
+syscall.c. This makes our code clean and ensures that we're doing minimal error handling in the actual syscalls themselves. For example, in
+our read and write syscalls, the first thing we do is verify the buffer. This is one line of code, so it does not obscure the primary
+function of our read/write syscalls. Also, if VERIFY fails in either of these functions we exit with code -1 immediately -- that is what
+VERIFY does. That way, we exit with an error code before we acquire a lock, so that our critical resource allocation does not get messed up.
+The only other potential error in read/write is if the pf we get from get_pf(fd) is invalid. If it is, we simply change the count we return,
+and then release the lock, just as we would if the pf were valid. The only thing that changes is the value of count, but we release the lock
+to avoid blocking a critical resource/starvation, etc. 
 
 ---- SYNCHRONIZATION ----
 

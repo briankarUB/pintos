@@ -59,6 +59,12 @@ In strtok_r() the save_pointer is provided by the caller
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+static struct p_file *get_pf (int fd); get pointer to file with corresponding int fd
+static bool is_pf_valid (const struct p_file *pf); return false if pf is 0,1,null, or points to any invalid location, returns true
+if pf points to valid file
+lock_init(&filesys_lock); initialize lock that we use for many syscalls, so that only one syscall can change a file at a time
+
+
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?

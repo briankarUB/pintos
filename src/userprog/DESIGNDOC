@@ -63,8 +63,8 @@ In strtok_r() the save_pointer is provided by the caller
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
 
-File descriptors are unique within the entire OS. We keep track of open files in the kernel.
-Each file has only one file descriptor to prevent ambiguity.
+We store file descriptors in an array, beginning with index 2 (since fds of 0 and 1 would be invalid). So, every time we add an fd to this
+array, its fd is simply the index it is stored in.
 
 ---- ALGORITHMS ----
 
